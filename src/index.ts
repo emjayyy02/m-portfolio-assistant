@@ -7,6 +7,12 @@
 // M Portfolio Assistant V1
 
 import { Env, ChatMessage } from "./types";
+import {
+	PROMPT_REFUSAL,
+	looksLikeInternalPromptLeak,
+	looksLikePromptInjection,
+	readCompleteModelResponse,
+} from "./security";
 
 import assistantRules from "../docs/assistant-rules.md";
 import portfolioGenerated from "../docs/portfolio-generated.md";
@@ -276,13 +282,9 @@ async function handleChatRequest(
 
 		// Text such as "SYSTEM: ..." is still a user message.
 		// Block obvious role/prompt-injection attempts before inference.
-		if (
-			looksLikePromptInjection(
-				latestUserMessage,
-			)
-		) {
+		if (looksLikePromptInjection(latestUserMessage)) {
 			return createSseTextResponse(
-				"Nice try 😅 I'm staying in portfolio mode. Ask me about Mj's projects, skills, or experience.",
+				PROMPT_REFUSAL,
 				request,
 			);
 		}
@@ -344,15 +346,20 @@ Stop immediately when the contract is satisfied.
 				inputs,
 			);
 
-		return new Response(stream, {
-			headers: {
-				"content-type":
-					"text/event-stream; charset=utf-8",
-				"cache-control": "no-cache",
-				connection: "keep-alive",
-				...getCorsHeaders(request),
-			},
-		});
+		const generatedText =
+			await readCompleteModelResponse(stream);
+
+		if (looksLikeInternalPromptLeak(generatedText)) {
+			console.warn(
+				"[security] Blocked potential prompt leakage.",
+			);
+			return createSseTextResponse(
+				PROMPT_REFUSAL,
+				request,
+			);
+		}
+
+		return createSseTextResponse(generatedText, request);
 	} catch (error) {
 		console.error(
 			"Error processing chat request:",
@@ -491,33 +498,6 @@ function getMaxResponseTokens(
 }
 
 // --------------------------------------------------
-// PROMPT-INJECTION DETECTION
-// --------------------------------------------------
-
-function looksLikePromptInjection(
-	message: string,
-): boolean {
-	const patterns: RegExp[] = [
-		/^\s*(system|developer|assistant|admin)\s*:/i,
-		/\bignore\s+(?:all\s+)?(?:previous|prior|above)\s+instructions\b/i,
-		/\bforget\s+(?:all\s+)?(?:previous|prior|above)\s+instructions\b/i,
-		/\b(?:you are now|you're now|become)\b.{0,80}\b(?:assistant|bot|agent)\b/i,
-		/\bpretend\s+(?:you are|you're)\b.{0,80}\b(?:assistant|bot|agent)\b/i,
-		/\bact\s+as\b.{0,80}\b(?:assistant|bot|agent)\b/i,
-		/\bdeveloper mode\b/i,
-		/\bunrestricted mode\b/i,
-		/\bjailbreak\b/i,
-		/\b(?:reveal|show|print|repeat|output)\b.{0,100}\b(?:system prompt|hidden instructions|developer message)\b/i,
-		/\b(?:reveal|show|print|repeat|output)\b.{0,100}\b(?:assistant-rules|portfolio-context)\b/i,
-		/\b(?:translate|encode|summarize|reconstruct)\b.{0,100}\b(?:system prompt|hidden instructions|assistant-rules|portfolio-context)\b/i,
-	];
-
-	return patterns.some(
-		(pattern) => pattern.test(message),
-	);
-}
-
-// --------------------------------------------------
 // CONVERSATION SANITIZATION
 // --------------------------------------------------
 
@@ -553,6 +533,10 @@ function sanitizeConversationForModel(
 		// Keep history useful without letting one old verbose answer
 		// dominate the current prompt.
 		if (message.role === "assistant") {
+			if (looksLikeInternalPromptLeak(message.content)) {
+				continue;
+			}
+
 			sanitized.push({
 				role: "assistant",
 				content: message.content.slice(0, 600),
