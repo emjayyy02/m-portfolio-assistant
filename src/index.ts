@@ -6,7 +6,11 @@
 
 // M Portfolio Assistant V1
 
-import { Env, ChatMessage } from "./types";
+import {
+	Env,
+	ChatMessage,
+} from "./types";
+
 import {
 	PROMPT_REFUSAL,
 	SOURCE_CLONE_REFUSAL,
@@ -16,6 +20,7 @@ import {
 	looksLikePromptInjection,
 	readCompleteModelResponse,
 } from "./security";
+
 import {
 	OUT_OF_SCOPE_RESPONSE,
 	isPortfolioScopedRequest,
@@ -23,23 +28,36 @@ import {
 
 import assistantRules from "../docs/assistant-rules.md";
 import portfolioGenerated from "../docs/portfolio-generated.md";
+import publicProfessionalContext from "../docs/public-professional-context.md";
 import portfolioDeepContext from "../docs/portfolio-deep-context.md";
 
 // --------------------------------------------------
 // CONFIGURATION
 // --------------------------------------------------
 
-const MODEL_ID = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+const MODEL_ID =
+	"@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
-const MAX_BODY_SIZE = 12_000;
-const MAX_MESSAGES = 10;
-const MAX_MESSAGE_LENGTH = 750;
+const MAX_BODY_SIZE =
+	12_000;
+
+const MAX_MESSAGES =
+	10;
+
+const MAX_MESSAGE_LENGTH =
+	750;
 
 const ALLOWED_ORIGINS = [
 	"https://marvinsilverio.vercel.app",
 	"http://localhost:5173",
 	"http://127.0.0.1:5173",
 ];
+
+const PORTFOLIO_SCOPE_KNOWLEDGE = `
+${portfolioGenerated}
+
+${publicProfessionalContext}
+`;
 
 type ResponseMode =
 	| "normal"
@@ -57,43 +75,81 @@ export default {
 		env: Env,
 		_ctx: ExecutionContext,
 	): Promise<Response> {
-		const url = new URL(request.url);
+		const url =
+			new URL(request.url);
 
 		// Static frontend bundled with the Worker template.
 		if (
 			url.pathname === "/" ||
 			!url.pathname.startsWith("/api/")
 		) {
-			return env.ASSETS.fetch(request);
+			return env.ASSETS.fetch(
+				request,
+			);
 		}
 
-		if (url.pathname !== "/api/chat") {
-			return new Response("Not found", {
-				status: 404,
-			});
+		if (
+			url.pathname !==
+			"/api/chat"
+		) {
+			return new Response(
+				"Not found",
+				{
+					status: 404,
+				},
+			);
 		}
 
-		if (request.method === "OPTIONS") {
-			if (!isOriginAllowed(request)) {
-				return new Response(null, {
-					status: 403,
-				});
+		if (
+			request.method ===
+			"OPTIONS"
+		) {
+			if (
+				!isOriginAllowed(
+					request,
+				)
+			) {
+				return new Response(
+					null,
+					{
+						status: 403,
+					},
+				);
 			}
 
-			return new Response(null, {
-				status: 204,
-				headers: getCorsHeaders(request),
-			});
+			return new Response(
+				null,
+				{
+					status: 204,
+					headers:
+						getCorsHeaders(
+							request,
+						),
+				},
+			);
 		}
 
-		if (request.method !== "POST") {
-			return new Response("Method not allowed", {
-				status: 405,
-				headers: getCorsHeaders(request),
-			});
+		if (
+			request.method !==
+			"POST"
+		) {
+			return new Response(
+				"Method not allowed",
+				{
+					status: 405,
+					headers:
+						getCorsHeaders(
+							request,
+						),
+				},
+			);
 		}
 
-		if (!isOriginAllowed(request)) {
+		if (
+			!isOriginAllowed(
+				request,
+			)
+		) {
 			return jsonError(
 				"Origin not allowed.",
 				403,
@@ -101,7 +157,10 @@ export default {
 			);
 		}
 
-		return handleChatRequest(request, env);
+		return handleChatRequest(
+			request,
+			env,
+		);
 	},
 } satisfies ExportedHandler<Env>;
 
@@ -114,12 +173,16 @@ async function handleChatRequest(
 	env: Env,
 ): Promise<Response> {
 	const contentType =
-		request.headers.get("Content-Type") ?? "";
+		request.headers.get(
+			"Content-Type",
+		) ?? "";
 
 	if (
 		!contentType
 			.toLowerCase()
-			.startsWith("application/json")
+			.startsWith(
+				"application/json",
+			)
 	) {
 		return jsonError(
 			"Content-Type must be application/json.",
@@ -132,7 +195,8 @@ async function handleChatRequest(
 		let rawBody: string;
 
 		try {
-			rawBody = await request.text();
+			rawBody =
+				await request.text();
 		} catch {
 			return jsonError(
 				"Unable to read request body.",
@@ -142,9 +206,14 @@ async function handleChatRequest(
 		}
 
 		const bodySize =
-			new TextEncoder().encode(rawBody).length;
+			new TextEncoder().encode(
+				rawBody,
+			).length;
 
-		if (bodySize > MAX_BODY_SIZE) {
+		if (
+			bodySize >
+			MAX_BODY_SIZE
+		) {
 			return jsonError(
 				`Request body cannot exceed ${MAX_BODY_SIZE} bytes.`,
 				413,
@@ -155,7 +224,8 @@ async function handleChatRequest(
 		let body: unknown;
 
 		try {
-			body = JSON.parse(rawBody);
+			body =
+				JSON.parse(rawBody);
 		} catch {
 			return jsonError(
 				"Request body must contain valid JSON.",
@@ -165,7 +235,8 @@ async function handleChatRequest(
 		}
 
 		if (
-			typeof body !== "object" ||
+			typeof body !==
+				"object" ||
 			body === null ||
 			!("messages" in body)
 		) {
@@ -176,11 +247,16 @@ async function handleChatRequest(
 			);
 		}
 
-		const { messages } = body as {
-			messages: unknown;
-		};
+		const { messages } =
+			body as {
+				messages: unknown;
+			};
 
-		if (!Array.isArray(messages)) {
+		if (
+			!Array.isArray(
+				messages,
+			)
+		) {
 			return jsonError(
 				"messages must be an array.",
 				400,
@@ -188,7 +264,9 @@ async function handleChatRequest(
 			);
 		}
 
-		if (messages.length === 0) {
+		if (
+			messages.length === 0
+		) {
 			return jsonError(
 				"messages cannot be empty.",
 				400,
@@ -196,7 +274,10 @@ async function handleChatRequest(
 			);
 		}
 
-		if (messages.length > MAX_MESSAGES) {
+		if (
+			messages.length >
+			MAX_MESSAGES
+		) {
 			return jsonError(
 				`Conversation cannot exceed ${MAX_MESSAGES} messages.`,
 				400,
@@ -204,11 +285,16 @@ async function handleChatRequest(
 			);
 		}
 
-		const safeMessages: ChatMessage[] = [];
+		const safeMessages:
+			ChatMessage[] = [];
 
-		for (const message of messages) {
+		for (
+			const message of
+			messages
+		) {
 			if (
-				typeof message !== "object" ||
+				typeof message !==
+					"object" ||
 				message === null
 			) {
 				return jsonError(
@@ -218,7 +304,10 @@ async function handleChatRequest(
 				);
 			}
 
-			const { role, content } = message as {
+			const {
+				role,
+				content,
+			} = message as {
 				role?: unknown;
 				content?: unknown;
 			};
@@ -235,7 +324,10 @@ async function handleChatRequest(
 				);
 			}
 
-			if (typeof content !== "string") {
+			if (
+				typeof content !==
+				"string"
+			) {
 				return jsonError(
 					"Message content must be a string.",
 					400,
@@ -243,9 +335,13 @@ async function handleChatRequest(
 				);
 			}
 
-			const trimmedContent = content.trim();
+			const trimmedContent =
+				content.trim();
 
-			if (trimmedContent.length === 0) {
+			if (
+				trimmedContent.length ===
+				0
+			) {
 				return jsonError(
 					"Message content cannot be empty.",
 					400,
@@ -266,48 +362,84 @@ async function handleChatRequest(
 
 			safeMessages.push({
 				role,
-				content: trimmedContent,
+				content:
+					trimmedContent,
 			});
 		}
 
 		// Only structurally valid requests consume rate-limit quota.
 		const rateLimitResponse =
-			await checkChatRateLimit(request, env);
+			await checkChatRateLimit(
+				request,
+				env,
+			);
 
-		if (rateLimitResponse) {
+		if (
+			rateLimitResponse
+		) {
 			return rateLimitResponse;
 		}
 
-		let latestUserIndex = safeMessages.length - 1;
-		while (latestUserIndex >= 0 && safeMessages[latestUserIndex].role !== "user") {
+		let latestUserIndex =
+			safeMessages.length - 1;
+
+		while (
+			latestUserIndex >= 0 &&
+			safeMessages[
+				latestUserIndex
+			].role !== "user"
+		) {
 			latestUserIndex--;
 		}
-		const latestUserMessage =
-			safeMessages[latestUserIndex]?.content ?? "";
 
-		// Text such as "SYSTEM: ..." is still a user message.
-		// Block obvious role/prompt-injection attempts before inference.
-		if (looksLikePromptInjection(latestUserMessage)) {
+		const latestUserMessage =
+			safeMessages[
+				latestUserIndex
+			]?.content ?? "";
+
+		// Visitor text never receives system authority.
+		if (
+			looksLikePromptInjection(
+				latestUserMessage,
+			)
+		) {
 			return createSseTextResponse(
 				PROMPT_REFUSAL,
 				request,
 			);
 		}
 
-		if (isPortfolioCloneRequest(latestUserMessage)) {
+		// Full source / 1:1 portfolio reconstruction is a separate boundary.
+		if (
+			isPortfolioCloneRequest(
+				latestUserMessage,
+			)
+		) {
 			return createSseTextResponse(
 				SOURCE_CLONE_REFUSAL,
 				request,
 			);
 		}
 
-		if (!isPortfolioScopedRequest(
-			latestUserMessage,
-			safeMessages.slice(0, latestUserIndex),
-			portfolioGenerated,
-		)) {
-			console.info("[scope] Rejected out-of-scope request.");
-			return createSseTextResponse(OUT_OF_SCOPE_RESPONSE, request);
+		// M is intentionally a portfolio-only assistant.
+		if (
+			!isPortfolioScopedRequest(
+				latestUserMessage,
+				safeMessages.slice(
+					0,
+					latestUserIndex,
+				),
+				PORTFOLIO_SCOPE_KNOWLEDGE,
+			)
+		) {
+			console.info(
+				"[scope] Rejected out-of-scope request.",
+			);
+
+			return createSseTextResponse(
+				OUT_OF_SCOPE_RESPONSE,
+				request,
+			);
 		}
 
 		const modelConversation =
@@ -316,13 +448,19 @@ async function handleChatRequest(
 			);
 
 		const responseMode =
-			getResponseMode(latestUserMessage);
+			getResponseMode(
+				latestUserMessage,
+			);
 
 		const responseContract =
-			getResponseContract(responseMode);
+			getResponseContract(
+				responseMode,
+			);
 
 		const maxTokens =
-			getMaxResponseTokens(responseMode);
+			getMaxResponseTokens(
+				responseMode,
+			);
 
 		const systemPrompt = `
 ${assistantRules}
@@ -330,8 +468,11 @@ ${assistantRules}
 # CURRENT RESPONSE CONTRACT
 ${responseContract}
 
-# CURRENT PUBLIC PORTFOLIO FACTS
+# CURRENT GENERATED PORTFOLIO FACTS
 ${portfolioGenerated}
+
+# APPROVED PUBLIC PROFESSIONAL CONTEXT
+${publicProfessionalContext}
 
 # DEEPER APPROVED PORTFOLIO CONTEXT
 ${portfolioDeepContext}
@@ -342,45 +483,67 @@ Do not exceed its sentence, bullet, step, or word limits.
 Stop immediately when the contract is satisfied.
 `;
 
-		const modelMessages: ChatMessage[] = [
+		const modelMessages:
+			ChatMessage[] = [
 			{
 				role: "system",
-				content: systemPrompt,
+				content:
+					systemPrompt,
 			},
 			...modelConversation,
 		];
 
 		const inputs = {
-			messages: modelMessages,
-			max_tokens: maxTokens,
+			messages:
+				modelMessages,
+			max_tokens:
+				maxTokens,
 			stream: true,
 			temperature: 0.2,
 			top_p: 0.8,
-			repetition_penalty: 1.08,
+			repetition_penalty:
+				1.08,
 		} satisfies AiTextGenerationInput & {
 			stream: true;
 		};
 
 		const stream =
-			await env.AI.run<typeof MODEL_ID>(
+			await env.AI.run<
+				typeof MODEL_ID
+			>(
 				MODEL_ID,
 				inputs,
 			);
 
+		/*
+		 * Workers AI is buffered completely before anything is released
+		 * to the browser. This allows deterministic outbound prompt-leak
+		 * inspection.
+		 */
 		const generatedText =
-			await readCompleteModelResponse(stream);
+			await readCompleteModelResponse(
+				stream,
+			);
 
-		if (looksLikeInternalPromptLeak(generatedText)) {
+		if (
+			looksLikeInternalPromptLeak(
+				generatedText,
+			)
+		) {
 			console.warn(
 				"[security] Blocked potential prompt leakage.",
 			);
+
 			return createSseTextResponse(
 				PROMPT_REFUSAL,
 				request,
 			);
 		}
 
-		return createSseTextResponse(generatedText, request);
+		return createSseTextResponse(
+			generatedText,
+			request,
+		);
 	} catch (error) {
 		console.error(
 			"Error processing chat request:",
@@ -403,26 +566,35 @@ function getResponseMode(
 	message: string,
 ): ResponseMode {
 	const technicalRequest =
-		/\b(code|example|json|payload|schema|request body|api request|response body|typescript|javascript|html|css|curl|fetch|webhook payload)\b/i
-			.test(message);
+		/\b(code|example|json|payload|schema|request body|api request|response body|typescript|javascript|html|css|curl|fetch|webhook payload)\b/i.test(
+			message,
+		);
 
-	if (technicalRequest) {
+	if (
+		technicalRequest
+	) {
 		return "technical";
 	}
 
 	const comparisonRequest =
-		/\b(compare|comparison|difference|different|versus|vs\.?)\b/i
-			.test(message);
+		/\b(compare|comparison|difference|different|versus|vs\.?)\b/i.test(
+			message,
+		);
 
-	if (comparisonRequest) {
+	if (
+		comparisonRequest
+	) {
 		return "comparison";
 	}
 
 	const detailedRequest =
-		/\b(detail|detailed|breakdown|architecture|step[- ]?by[- ]?step|how does|how did|how is|how was|how it works|technical explanation|technical depth|explain in depth|deep dive)\b/i
-			.test(message);
+		/\b(detail|detailed|breakdown|architecture|step[- ]?by[- ]?step|how does|how did|how is|how was|how it works|technical explanation|technical depth|explain in depth|deep dive)\b/i.test(
+			message,
+		);
 
-	if (detailedRequest) {
+	if (
+		detailedRequest
+	) {
 		return "detailed";
 	}
 
@@ -502,16 +674,16 @@ STRICT OUTPUT SHAPE:
 function getMaxResponseTokens(
 	mode: ResponseMode,
 ): number {
-	// These are safety ceilings, not target lengths.
-	// The response contract controls brevity so the model has room
-	// to finish naturally instead of being chopped mid-sentence.
 	switch (mode) {
 		case "comparison":
 			return 256;
+
 		case "detailed":
 			return 512;
+
 		case "technical":
 			return 640;
+
 		case "normal":
 		default:
 			return 256;
@@ -525,59 +697,89 @@ function getMaxResponseTokens(
 function sanitizeConversationForModel(
 	messages: readonly ChatMessage[],
 ): ChatMessage[] {
-	const sanitized: ChatMessage[] = [];
-	let skipFollowingAssistant = false;
+	const sanitized:
+		ChatMessage[] = [];
 
-	for (const message of messages) {
+	let skipFollowingAssistant =
+		false;
+
+	for (
+		const message of
+		messages
+	) {
 		if (
-			message.role === "user" &&
+			message.role ===
+				"user" &&
 			looksLikePromptInjection(
 				message.content,
 			)
 		) {
-			skipFollowingAssistant = true;
+			skipFollowingAssistant =
+				true;
+
 			continue;
 		}
 
-		// Do not reuse old source-reconstruction requests as context for a
-		// later answer, even though they are not prompt-injection attempts.
 		if (
-			message.role === "user" &&
-			isPortfolioCloneRequest(message.content)
+			message.role ===
+				"user" &&
+			isPortfolioCloneRequest(
+				message.content,
+			)
 		) {
 			continue;
 		}
 
 		if (
 			skipFollowingAssistant &&
-			message.role === "assistant"
+			message.role ===
+				"assistant"
 		) {
-			skipFollowingAssistant = false;
+			skipFollowingAssistant =
+				false;
+
 			continue;
 		}
 
-		if (message.role === "user") {
-			skipFollowingAssistant = false;
+		if (
+			message.role ===
+			"user"
+		) {
+			skipFollowingAssistant =
+				false;
 		}
 
-		// Keep history useful without letting one old verbose answer
-		// dominate the current prompt.
-		if (message.role === "assistant") {
+		if (
+			message.role ===
+			"assistant"
+		) {
 			if (
-				looksLikeInternalPromptLeak(message.content) ||
-				isLargeGeneratedCodeResponse(message.content)
+				looksLikeInternalPromptLeak(
+					message.content,
+				) ||
+				isLargeGeneratedCodeResponse(
+					message.content,
+				)
 			) {
 				continue;
 			}
 
 			sanitized.push({
-				role: "assistant",
-				content: message.content.slice(0, 600),
+				role:
+					"assistant",
+				content:
+					message.content.slice(
+						0,
+						600,
+					),
 			});
+
 			continue;
 		}
 
-		sanitized.push(message);
+		sanitized.push(
+			message,
+		);
 	}
 
 	return sanitized;
@@ -592,21 +794,34 @@ function createSseTextResponse(
 	request: Request,
 ): Response {
 	const body =
-		`data: ${JSON.stringify({
-			response: text,
-		})}\n\n` +
+		`data: ${JSON.stringify(
+			{
+				response: text,
+			},
+		)}\n\n` +
 		"data: [DONE]\n\n";
 
-	return new Response(body, {
-		status: 200,
-		headers: {
-			"content-type":
-				"text/event-stream; charset=utf-8",
-			"cache-control": "no-cache",
-			connection: "keep-alive",
-			...getCorsHeaders(request),
+	return new Response(
+		body,
+		{
+			status: 200,
+
+			headers: {
+				"content-type":
+					"text/event-stream; charset=utf-8",
+
+				"cache-control":
+					"no-cache",
+
+				connection:
+					"keep-alive",
+
+				...getCorsHeaders(
+					request,
+				),
+			},
 		},
-	});
+	);
 }
 
 // --------------------------------------------------
@@ -620,14 +835,20 @@ async function checkChatRateLimit(
 	const clientIp =
 		request.headers.get(
 			"CF-Connecting-IP",
-		) ?? "local-development";
+		) ??
+		"local-development";
 
 	const clientResult =
-		await env.CHAT_CLIENT_RATE_LIMITER.limit({
-			key: `chat-client:${clientIp}`,
-		});
+		await env.CHAT_CLIENT_RATE_LIMITER.limit(
+			{
+				key:
+					`chat-client:${clientIp}`,
+			},
+		);
 
-	if (!clientResult.success) {
+	if (
+		!clientResult.success
+	) {
 		return jsonError(
 			"Too many requests. Please wait a moment and try again.",
 			429,
@@ -636,11 +857,16 @@ async function checkChatRateLimit(
 	}
 
 	const globalResult =
-		await env.CHAT_GLOBAL_RATE_LIMITER.limit({
-			key: "portfolio-chat",
-		});
+		await env.CHAT_GLOBAL_RATE_LIMITER.limit(
+			{
+				key:
+					"portfolio-chat",
+			},
+		);
 
-	if (!globalResult.success) {
+	if (
+		!globalResult.success
+	) {
 		return jsonError(
 			"M is a little busy right now. Please try again shortly.",
 			429,
@@ -666,11 +892,15 @@ function jsonError(
 		}),
 		{
 			status,
+
 			headers: {
 				"content-type":
 					"application/json",
+
 				...(request
-					? getCorsHeaders(request)
+					? getCorsHeaders(
+							request,
+						)
 					: {}),
 			},
 		},
@@ -685,29 +915,40 @@ function getCorsHeaders(
 	request: Request,
 ): Record<string, string> {
 	const origin =
-		request.headers.get("Origin");
+		request.headers.get(
+			"Origin",
+		);
 
 	if (!origin) {
 		return {};
 	}
 
 	const workerOrigin =
-		new URL(request.url).origin;
+		new URL(
+			request.url,
+		).origin;
 
 	const allowed =
-		origin === workerOrigin ||
-		ALLOWED_ORIGINS.includes(origin);
+		origin ===
+			workerOrigin ||
+		ALLOWED_ORIGINS.includes(
+			origin,
+		);
 
 	if (!allowed) {
 		return {};
 	}
 
 	return {
-		"Access-Control-Allow-Origin": origin,
+		"Access-Control-Allow-Origin":
+			origin,
+
 		"Access-Control-Allow-Methods":
 			"POST, OPTIONS",
+
 		"Access-Control-Allow-Headers":
 			"Content-Type",
+
 		Vary: "Origin",
 	};
 }
@@ -716,7 +957,9 @@ function isOriginAllowed(
 	request: Request,
 ): boolean {
 	const origin =
-		request.headers.get("Origin");
+		request.headers.get(
+			"Origin",
+		);
 
 	// Requests without Origin may be curl, API tools,
 	// or server-to-server requests. CORS is a browser boundary.
@@ -725,10 +968,15 @@ function isOriginAllowed(
 	}
 
 	const workerOrigin =
-		new URL(request.url).origin;
+		new URL(
+			request.url,
+		).origin;
 
 	return (
-		origin === workerOrigin ||
-		ALLOWED_ORIGINS.includes(origin)
+		origin ===
+			workerOrigin ||
+		ALLOWED_ORIGINS.includes(
+			origin,
+		)
 	);
 }
