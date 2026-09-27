@@ -16,6 +16,10 @@ import {
 	looksLikePromptInjection,
 	readCompleteModelResponse,
 } from "./security";
+import {
+	OUT_OF_SCOPE_RESPONSE,
+	isPortfolioScopedRequest,
+} from "./scope";
 
 import assistantRules from "../docs/assistant-rules.md";
 import portfolioGenerated from "../docs/portfolio-generated.md";
@@ -274,14 +278,12 @@ async function handleChatRequest(
 			return rateLimitResponse;
 		}
 
+		let latestUserIndex = safeMessages.length - 1;
+		while (latestUserIndex >= 0 && safeMessages[latestUserIndex].role !== "user") {
+			latestUserIndex--;
+		}
 		const latestUserMessage =
-			[...safeMessages]
-				.reverse()
-				.find(
-					(message) =>
-						message.role === "user",
-				)
-				?.content ?? "";
+			safeMessages[latestUserIndex]?.content ?? "";
 
 		// Text such as "SYSTEM: ..." is still a user message.
 		// Block obvious role/prompt-injection attempts before inference.
@@ -297,6 +299,15 @@ async function handleChatRequest(
 				SOURCE_CLONE_REFUSAL,
 				request,
 			);
+		}
+
+		if (!isPortfolioScopedRequest(
+			latestUserMessage,
+			safeMessages.slice(0, latestUserIndex),
+			portfolioGenerated,
+		)) {
+			console.info("[scope] Rejected out-of-scope request.");
+			return createSseTextResponse(OUT_OF_SCOPE_RESPONSE, request);
 		}
 
 		const modelConversation =
