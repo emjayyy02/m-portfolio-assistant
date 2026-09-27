@@ -1,48 +1,156 @@
 # Marvin Silverio — Deeper Portfolio Context
 
-This file contains approved technical context M may use when a visitor asks for deeper explanations, comparisons, architecture, or project reasoning.
+This file contains approved technical context M may use when a visitor asks for deeper explanations, comparisons, architecture, implementation decisions, or project reasoning.
 
-Current public facts such as project titles, summaries, technologies, certifications, education, and professional role come from the generated portfolio knowledge file.
+Current public facts such as project titles, summaries, technologies, certification information, education, and featured status come from the generated portfolio knowledge.
 
-Do not invent experience, employment, clients, metrics, revenue, results, or personal information not documented in approved portfolio knowledge.
+Stable public professional information such as contact links, practical experience, professional direction, and public background comes from the approved public professional context.
+
+Do not invent employment, clients, metrics, revenue, results, professional experience, or personal information not documented in approved knowledge.
+
+# Revenue Recovery OS
+
+Revenue Recovery OS is the current Featured Build and strongest overall systems project in the portfolio.
+
+Positioning:
+
+An explainable customer churn-risk and recovery operations system connecting customer signals, human-approved interventions, automation, and confirmed outcomes.
+
+Core operational flow:
+
+Customer Events
+→ Deterministic Risk Signals
+→ Explainable Risk Score
+→ Revenue Exposure
+→ Recovery Recommendation
+→ Human Approval
+→ n8n Execution
+→ Callback
+→ Confirmed Outcome
+→ Analytics
+
+Important architecture:
+- React and TypeScript provide the operator-facing application.
+- A Cloudflare Worker owns API validation, business logic, and lifecycle control.
+- Supabase / PostgreSQL stores operational business records.
+- Churn-risk scoring is deterministic and rule-based.
+- AI is advisory and does not calculate the authoritative churn-risk score.
+- AI can assist summaries, recommendations, and communication drafting.
+- Human approval remains required for consequential intervention decisions.
+- n8n performs approved external automation work.
+- Business state remains owned by the application and database rather than by n8n.
+- Technical execution success and actual customer-recovery outcome are separate states.
+- Callbacks record execution results.
+- Confirmed business outcomes are recorded separately as recovered or not recovered.
+- Failed execution remains observable rather than silently disappearing.
+- The public demo uses fictional and sanitized data.
+- Consequential mutation paths are intentionally restricted in the public demo.
+- The public system demonstrates architecture and workflow behavior without claiming real customers or recovered revenue.
+
+Public deployment architecture:
+
+Visitor
+→ Vercel React / TypeScript frontend
+→ Cloudflare Worker API
+→ Demo Supabase / PostgreSQL
+
+Automation execution architecture:
+
+Application
+→ approved intervention
+→ n8n
+→ external action
+→ callback
+→ application/database state
+
+Best evidence:
+- full-stack React and TypeScript development
+- Cloudflare Worker backend ownership
+- PostgreSQL / Supabase operational state
+- deterministic business logic
+- explainable risk scoring
+- human-in-the-loop workflows
+- n8n integration
+- automation boundaries
+- failure-state handling
+- outcome tracking
+- AI used as assistance rather than business authority
+- public-demo security boundaries
+
+Evidence boundary:
+
+Do not claim:
+- real customers
+- measured real-world revenue recovery
+- commercial production deployment
+- predictive machine-learning churn probability
+- enterprise readiness
 
 # Personal Developer Portfolio and M
 
 The portfolio includes M, a custom AI portfolio assistant.
 
-M's architecture:
+Current request architecture:
 
-Portfolio React frontend → Cloudflare Worker API → Cloudflare Workers AI → streamed response back to the interface.
+Portfolio React frontend
+→ Cloudflare Worker API
+→ deterministic validation and policy guards
+→ Cloudflare Workers AI
+→ complete upstream response buffering
+→ outbound security inspection
+→ SSE-formatted response to the interface
 
-Important architecture:
-- The React frontend sends chat requests to a Cloudflare Worker API.
-- The Worker owns the system instructions and portfolio knowledge.
-- Visitors cannot provide or override the system role.
-- Recent conversation history is included so follow-up questions retain context.
-- Responses stream back to the frontend rather than waiting for one complete response.
-- Runtime validation limits request body size, conversation length, message length, and allowed roles.
-- CORS uses an allowlist rather than allowing arbitrary origins.
-- Per-visitor and broader chatbot rate limiting protect the endpoint from excessive use.
-- The frontend supports request timeouts, retry UX, partial-stream preservation, and error handling.
-- Internal instructions and portfolio knowledge stay on the Worker instead of being exposed in browser code.
+Important Worker behavior:
+- The React frontend sends recent conversation context to the Cloudflare Worker.
+- The Worker owns system instructions and approved knowledge.
+- Visitors cannot submit a system role.
+- Request body size, message count, message length, message role, and content types are validated.
+- CORS uses an explicit allowlist.
+- Per-client and global rate limiting protect the endpoint.
+- Prompt-extraction and role-override attempts are checked before inference.
+- Full portfolio-cloning and source-reconstruction requests use a separate deterministic guard.
+- A deterministic portfolio-scope gate prevents M from turning into a general-purpose assistant.
+- Scope checking happens before response-mode selection and model inference.
+- Malicious or unsafe conversation history can be removed before being sent back to the model.
+- Large generated code responses can be removed from future history.
+- The Worker requests a streamed Workers AI response internally, but does not directly expose those upstream tokens.
+- The complete model answer is buffered first.
+- The buffered answer is inspected for signs of internal prompt leakage.
+- Only validated text is returned to the frontend using the existing SSE response format.
+- This intentionally prioritizes confidentiality checks over true token-by-token browser streaming.
+
+Important distinction:
+
+The SSE interface remains useful for frontend compatibility, but current production behavior validates the complete answer before sending it to the visitor.
+
+Security is layered rather than relying only on model instructions.
 
 Best evidence:
-- modern web and AI integration
+- React / TypeScript frontend
+- Cloudflare Workers
+- Workers AI integration
+- request validation
+- deterministic scope enforcement
+- prompt-injection defenses
+- source-reconstruction boundaries
+- conversation sanitization
+- outbound model-response inspection
+- CORS
+- rate limiting
 - frontend/backend separation
-- streamed AI responses
 - API hardening
-- reliability-focused implementation
 
 # NovaTech Solutions
 
-This is a fictional frontend and business-presentation project.
+NovaTech Solutions is a fictional frontend and business-presentation project.
 
 Important context:
-- The project practices complete marketing-page structure rather than only a hero section.
-- The layout is responsive and designed around a clear conversion path.
+- The project practices a complete marketing-page structure rather than only a hero section.
+- The layout is responsive and organized around a clear conversion path.
 - The page includes service positioning, process explanation, pricing comparison, FAQs, testimonials, and contact interaction.
-- Testimonials, pricing, companies, and business claims belong to the fictional exercise and are not evidence of real customers or commercial results.
-- The contact experience is frontend-only and does not represent a production lead-processing system.
+- Testimonials, pricing, companies, and business claims belong to the fictional exercise.
+- They are not evidence of real customers or commercial results.
+- The contact experience is frontend-focused and does not represent a production sales system.
 
 Best evidence:
 - responsive frontend fundamentals
@@ -50,16 +158,32 @@ Best evidence:
 - conversion-focused page structure
 - interaction design
 
+# Offangle
+
+Offangle is a fictional Valorant coaching landing-page project.
+
+Important context:
+- It demonstrates responsive frontend design.
+- It uses a gaming-specific visual direction.
+- The layout focuses on strong hero positioning and a clear conversion path.
+- It is supporting frontend evidence rather than one of Mj's primary automation systems.
+
+Best evidence:
+- responsive HTML, CSS, and JavaScript
+- visual hierarchy
+- focused landing-page structure
+- frontend presentation
+
 # Workflow Operations Manager
 
 Important architecture:
-- Projects and their nested tasks form the application's primary data model.
-- Project progress, task totals, overdue state, dashboard values, calendar entries, and reports are derived from shared underlying data instead of being maintained as separate competing values.
-- CRUD operations update the shared application state and dependent views.
-- Search, filtering, and sorting operate on display copies instead of mutating the source data.
-- Local Storage persists application data and user preferences across sessions.
+- Projects and nested tasks form the primary data model.
+- Project progress, task totals, overdue state, dashboard values, calendar entries, and reports are derived from shared underlying data.
+- CRUD operations update shared application state and dependent views.
+- Search, filtering, and sorting operate on display copies rather than mutating source data.
+- Local Storage persists application data and preferences.
 - The application uses modular JavaScript rather than one large script.
-- Calendar and reporting views are projections of operational data, not separate datastores.
+- Calendar and reporting views are projections of operational data rather than separate datastores.
 - Keyboard workflows include guarded shortcuts so normal text input is not hijacked.
 
 Best evidence:
@@ -77,17 +201,31 @@ This project is more focused on frontend application logic than workflow automat
 
 Core flow:
 
-Invoice event → normalization → validation → duplicate prevention → collection scoring → priority assignment → persistence → routing → notifications → HTTP delivery → success/failure detection → bounded retry → final failure handling → technical error logging.
+Invoice Event
+→ Normalization
+→ Validation
+→ Duplicate Prevention
+→ Collection Scoring
+→ Priority Assignment
+→ Persistence
+→ Routing
+→ Notifications
+→ HTTP Delivery
+→ Success / Failure Detection
+→ Bounded Retry
+→ Final Failure Handling
+→ Technical Error Logging
 
 Important architecture:
-- Incoming invoice data is normalized and validated before downstream business logic runs.
+- Incoming invoice data is normalized and validated before downstream business logic.
 - Invalid business input is separated from accepted invoice records.
 - Existing invoice IDs are checked before side effects to reduce duplicate processing.
 - Valid invoices receive a deterministic collection score based on business fields such as amount, account tier, and payment terms.
 - Scores determine LOW, MEDIUM, or HIGH collection priority.
 - Priority affects finance routing and notification behavior.
 - Accepted invoice data is persisted before external HTTP delivery.
-- Persistence and delivery are separate concerns, so a downstream outage does not erase an already accepted invoice.
+- Persistence and delivery are separate concerns.
+- A downstream outage does not erase an already accepted invoice.
 - Temporary HTTP failures can enter a bounded retry path.
 - Retry behavior includes eligibility checks, delay, success exit, retry counting, and a hard limit.
 - Non-retryable failures and exhausted retries enter final failure handling.
@@ -101,68 +239,101 @@ Best evidence:
 - persistence
 - bounded retries
 - failure handling
-- API and business-tool integrations
+- APIs
+- Google Sheets
+- Gmail
+- webhook integration
 
 # AI Support Operations Triage System
 
 Core flow:
 
-Classify → Validate → Review → Route → Draft
+Classify
+→ Validate
+→ Review
+→ Route
+→ Draft
 
 Important architecture:
 - Customer messages are treated as untrusted input.
-- The AI interprets language but does not own consequential workflow decisions.
+- AI interprets language but does not own consequential workflow decisions.
 - Classification produces structured fields such as category, summary, requested action, urgency, and interpretation-level review state.
-- Structured output is validated again with deterministic logic before business routing trusts it.
-- Invalid or malformed AI output enters a separate fallback path instead of continuing into normal routing.
-- AI uncertainty and business-required human review are treated as separate concepts.
-- Deterministic review rules can require human review even when the classifier considers the request clear.
-- Examples include refund-related requests, account-security concerns, high urgency, ambiguity, and unsupported categories.
-- Sensitive policy decisions stay outside the AI prompt when deterministic rules provide stronger control.
+- Structured AI output is validated using deterministic logic.
+- Invalid or malformed model output enters a separate failure/fallback path.
+- AI uncertainty and business-required human review are separate concepts.
+- Deterministic review rules can require human review even when the classifier considers a request clear.
+- Sensitive business policy remains outside the prompt when deterministic rules provide stronger control.
 - Valid tickets are routed to an appropriate operational queue.
-- Draft replies use processed ticket context but are constrained from claiming unverified actions.
+- Draft replies use processed ticket context but cannot claim unverified actions.
 - Drafting rules prevent invented refunds, investigations, fixes, escalations, prices, policies, timelines, or internal routing details.
 - Prompt-injection and adversarial ticket cases are included in evaluation.
-- Fixed benchmark testing is used to compare classifier behavior instead of judging only convincing individual examples.
+- Fixed benchmark testing compares model behavior against documented expected outcomes.
 
 Best evidence:
 - AI-assisted automation
-- structured model outputs
+- structured model output
 - deterministic validation
 - hybrid AI and rules architecture
 - human-review policy
-- defensive handling of untrusted input
-- evaluation and failure-path thinking
+- defensive handling of untrusted text
+- evaluation
+- failure-path thinking
 
 # Project Selection Guide
 
-If a visitor asks what to inspect first:
+If a visitor asks which project to inspect first:
 
-- JavaScript application architecture: Workflow Operations Manager
-- n8n automation and workflow reliability: Invoice Collections Automation
-- AI-assisted automation and deterministic controls: AI Support Operations Triage System
-- modern web plus AI integration: M / Personal Developer Portfolio
+Strongest overall systems / full-stack project:
+Revenue Recovery OS
+
+n8n automation and workflow reliability:
+Invoice Collections Automation
+
+AI-assisted automation with deterministic controls:
+AI Support Operations Triage System
+
+JavaScript application architecture:
+Workflow Operations Manager
+
+Frontend and landing-page work:
+NovaTech Solutions or Offangle
+
+Modern web plus AI integration:
+M / Personal Developer Portfolio
 
 # Evidence Boundaries
 
 Prefer evidence-based descriptions.
 
 Good:
+
 "He's used n8n in workflows involving validation, routing, retries, and integrations."
 
 Avoid:
+
 "He's an expert n8n engineer."
 
 Good:
-"Invoice Collections Automation is one of his stronger automation projects because it goes beyond basic trigger-action logic."
+
+"Revenue Recovery OS is his strongest systems project so far."
 
 Avoid:
-"It's an enterprise-grade financial platform."
+
+"It's an enterprise-ready revenue platform."
 
 Good:
+
 "His projects show growing systems thinking."
 
 Avoid:
+
 "He has years of professional systems-engineering experience."
 
-When discussing benchmark results, prototypes, fictional projects, or portfolio-scale systems, preserve those boundaries instead of presenting them as production or client results.
+When discussing:
+- benchmark results
+- fictional projects
+- portfolio-scale systems
+- prototypes
+- demo deployments
+
+preserve those boundaries instead of presenting them as real client or production outcomes.
