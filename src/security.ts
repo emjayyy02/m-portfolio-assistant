@@ -12,6 +12,81 @@ export function normalizeSecurityText(value: string): string {
 		.trim();
 }
 
+export const SOURCE_CLONE_REFUSAL =
+	"I can explain how Mj's portfolio is built, but I can't recreate a 1:1 copy or reproduce its full source code.";
+
+const PORTFOLIO_CLONE_VERB =
+	/\b(?:clone|copy|recreate|reproduce|replicate|duplicate|rebuild|vibecode|vibecoded)\b/i;
+
+const EXACT_OR_COMPLETE_REBUILD =
+	/\b1\s*:\s*1\b|\bone\s+to\s+one\b|\bexact(?:ly)?\s+(?:copy|replica|version|recreation|reproduction|replication)\b|\b(?:same|identical)\s+(?:portfolio|website|site|design)\b/i;
+
+const COMPLETE_SOURCE_REQUEST =
+	/\b(?:full|complete|entire|whole)\s+(?:version|source(?:\s+code)?|codebase|repository|repo|portfolio|website|site|replacement|implementation)\b|\b(?:all|every)\s+(?:the\s+)?(?:source(?:\s+code)?|codebase|repository|repo|components?|files|pages|html|css)\b/i;
+
+const DIRECT_PORTFOLIO_REBUILD =
+	/\b(?:make|build|create|generate)\s+(?:me\s+)?(?:this|the|marvin's|mj's)\s+(?:portfolio|website|site)\s+(?:for me|as an exact (?:copy|replica)|exactly)\b/i;
+
+const EXACT_SOURCE_FILE_REQUEST =
+	/\b(?:exact|full|complete|entire|whole)\s+[a-z0-9_-]+\.(?:tsx|jsx|html|css)\b/i;
+
+const PROTECTED_PORTFOLIO_TARGETS = [
+	/\bportfolio(?:\s+website)?\b/i,
+	/\b(?:this|the|that|same)\s+(?:(?:full|complete|entire|whole|exact|same)\s+)?(?:website|web\s+site|site)\b/i,
+	/\b(?:marvin|mj)'s\s+(?:portfolio|website|site)\b/i,
+	/\b(?:full|complete|entire|whole)\s+(?:source(?:\s+code)?|codebase|repository|repo)\b/i,
+	/\bsource(?:\s+code)?\b/i,
+	/\b(?:all|every|full|complete)\s+(?:the\s+)?(?:(?:react|tsx|jsx)\s+)?components?\b/i,
+	/\b(?:react|next(?:\.js)?)\s+(?:site|website|portfolio|app)\b/i,
+	/\b(?:this|the|same)\s+design\b/i,
+];
+
+/**
+ * Detect requests to reproduce Mj's portfolio or provide its complete source.
+ * This is a separate policy from prompt-injection detection.
+ */
+export function isPortfolioCloneRequest(value: string): boolean {
+	const text = normalizeSecurityText(value);
+	const hasProtectedTarget = PROTECTED_PORTFOLIO_TARGETS.some((pattern) =>
+		pattern.test(text),
+	);
+	const hasCloneIntent =
+		PORTFOLIO_CLONE_VERB.test(text) ||
+		EXACT_OR_COMPLETE_REBUILD.test(text) ||
+		COMPLETE_SOURCE_REQUEST.test(text) ||
+		DIRECT_PORTFOLIO_REBUILD.test(text);
+
+	return (
+		hasProtectedTarget &&
+		(hasCloneIntent || EXACT_SOURCE_FILE_REQUEST.test(text))
+	);
+}
+
+/**
+ * Identify oversized assistant code responses before they are reused as
+ * conversation context. Small generic examples remain available in history.
+ */
+export function isLargeGeneratedCodeResponse(value: string): boolean {
+	const codeBlocks = value.match(/```[\s\S]*?```/g) ?? [];
+	if (codeBlocks.some((block) => block.length >= 900)) {
+		return true;
+	}
+
+	if (value.length < 900) {
+		return false;
+	}
+
+	const codeLikeLines = value
+		.split(/\r?\n/)
+		.filter((line) =>
+			/^\s*(?:import\s|export\s|(?:const|let|var)\s+\w+\s*=|function\s+\w+|return\s+|<\/?(?:html|head|body|main|header|nav|section|div|article|style|script|button)\b|(?:\.|#)[a-z][\w-]*\s*\{|@media\b)/i.test(
+				line,
+			),
+		).length;
+
+	return codeLikeLines >= 8;
+}
+
 const EXTRACTION_ACTION =
 	/\b(?:reveal|show|print|repeat|output|copy|quote|reproduce|recite|provide|give|summarize|translate|encode|transform|reconstruct|continue|complete|disclose|list|share|tell me)\b/;
 

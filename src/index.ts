@@ -9,6 +9,9 @@
 import { Env, ChatMessage } from "./types";
 import {
 	PROMPT_REFUSAL,
+	SOURCE_CLONE_REFUSAL,
+	isLargeGeneratedCodeResponse,
+	isPortfolioCloneRequest,
 	looksLikeInternalPromptLeak,
 	looksLikePromptInjection,
 	readCompleteModelResponse,
@@ -289,6 +292,13 @@ async function handleChatRequest(
 			);
 		}
 
+		if (isPortfolioCloneRequest(latestUserMessage)) {
+			return createSseTextResponse(
+				SOURCE_CLONE_REFUSAL,
+				request,
+			);
+		}
+
 		const modelConversation =
 			sanitizeConversationForModel(
 				safeMessages,
@@ -518,6 +528,15 @@ function sanitizeConversationForModel(
 			continue;
 		}
 
+		// Do not reuse old source-reconstruction requests as context for a
+		// later answer, even though they are not prompt-injection attempts.
+		if (
+			message.role === "user" &&
+			isPortfolioCloneRequest(message.content)
+		) {
+			continue;
+		}
+
 		if (
 			skipFollowingAssistant &&
 			message.role === "assistant"
@@ -533,7 +552,10 @@ function sanitizeConversationForModel(
 		// Keep history useful without letting one old verbose answer
 		// dominate the current prompt.
 		if (message.role === "assistant") {
-			if (looksLikeInternalPromptLeak(message.content)) {
+			if (
+				looksLikeInternalPromptLeak(message.content) ||
+				isLargeGeneratedCodeResponse(message.content)
+			) {
 				continue;
 			}
 
