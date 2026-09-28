@@ -9,26 +9,42 @@ function normalize(value: string): string {
 		.toLowerCase()
 		.replace(/[\u200b-\u200d\u2060\ufeff]/g, "")
 		.replace(/[’‘]/g, "'")
-		.replace(/[“”]/g, '"')
 		.replace(/\s+/g, " ")
 		.trim();
 }
 
+/**
+ * Explicit references to Marvin.
+ *
+ * Supports:
+ * marvin
+ * marvin silverio
+ * marvin's
+ * marvins
+ * mj
+ * mj's
+ */
 const MARVIN_REFERENCE =
-	/\b(?:marvin(?:\s+silverio)?(?:'s|s)?|mj(?:'s)?)\b/;
-
-const PUBLIC_PROFILE_TOPIC =
-	/\b(?:age|old|email|e-mail|contact|contact info|contact information|linkedin|instagram|github|website|portfolio|portfolio link|site|resume|cv|study|studies|studying|student|school|college|university|course|degree|education|location|located|based|from|role|career|job|professional direction|professional goals?|goals?|focus|learning|experience|background|certifications?|skills?|technologies|tech stack|work|projects?)\b/;
-
-const PRONOUN_PROFILE_TOPIC =
-	/\b(?:age|old|email|e-mail|contact|linkedin|instagram|github|website|portfolio|resume|cv|study|studies|studying|student|school|college|university|course|degree|education|from|location|located|based|built|build|projects?|skills?|technologies|tech stack|know|knows|used|use|work|worked|works|experience|background|strengths?|developing|career|role|fit|automation|api|apis|webhook|webhooks|backend|frontend|failure cases|certifications?|professional|goals?|focus|learning)\b/;
-
-const SHORT_PROFILE_REQUEST =
-	/^(?:email|e-mail|linkedin|instagram|github|github account|portfolio|portfolio link|website|site|resume|cv|school|college|university|course|degree|education|age|location|contact|contact info|contact information)\??$/;
+	/\b(?:marvin(?: silverio)?(?:'s|s)?|mj(?:'s|s)?)\b/;
 
 /**
- * Only approved names — never technology/capability headings by themselves —
- * confer direct portfolio scope.
+ * Public / professional topics that make he/him/his clearly refer
+ * to Marvin in the context of his portfolio assistant.
+ */
+const PRONOUN_PROFILE_TOPIC =
+	/\b(?:age|old|email|contact|linkedin|linked in|instagram|github|website|portfolio|resume|cv|study|studies|studying|student|school|college|university|course|degree|program|education|from|location|based|built|build|projects?|skills?|technologies|tech stack|know|knows|used|use|work|worked|works|experience|background|strengths?|developing|career|role|fit|automation|api|apis|webhooks?|backend|frontend|failure cases|certifications?|professional|goals?|focus|learning)\b/;
+
+/**
+ * Inside a portfolio assistant, these very short requests can
+ * reasonably mean Marvin's public profile.
+ */
+const SHORT_PROFILE_REQUEST =
+	/^(?:email|linkedin|linked in|instagram|github|github account|portfolio|portfolio link|website|site|resume|cv|school|college|university|course|degree|program|education|age|location|contact|contact info|contact information)\??$/;
+
+/**
+ * Only approved named entities confer scope.
+ *
+ * Technology headings such as React or JavaScript intentionally do not.
  */
 export function extractPortfolioKnowledgeTerms(
 	knowledge: string,
@@ -37,36 +53,27 @@ export function extractPortfolioKnowledgeTerms(
 	let section = "";
 
 	for (const line of knowledge.split(/\r?\n/)) {
-		const sectionMatch =
-			/^##\s+(.+?)\s*$/.exec(line);
+		const sectionMatch = /^##\s+(.+?)\s*$/.exec(line);
 
 		if (sectionMatch) {
 			section = normalize(sectionMatch[1]);
 			continue;
 		}
 
-		if (
-			!/^(projects|certifications|education)$/.test(
-				section,
-			)
-		) {
+		if (!/^(projects|certifications|education)$/.test(section)) {
 			continue;
 		}
 
-		const heading =
-			/^###\s+(.+?)\s*$/.exec(line);
+		const heading = /^###\s+(.+?)\s*$/.exec(line);
 
 		const namedField =
 			section === "certifications"
 				? /^Provider:\s*(.+?)\s*$/.exec(line)
 				: section === "education"
-					? /^Institution:\s*(.+?)\s*$/.exec(
-							line,
-						)
+					? /^Institution:\s*(.+?)\s*$/.exec(line)
 					: null;
 
-		const name =
-			heading?.[1] ?? namedField?.[1];
+		const name = heading?.[1] ?? namedField?.[1];
 
 		if (name && name.length >= 4) {
 			terms.add(normalize(name));
@@ -76,48 +83,32 @@ export function extractPortfolioKnowledgeTerms(
 	return [...terms];
 }
 
-function containsTermAtBoundary(
-	message: string,
-	term: string,
-): boolean {
-	const index = message.indexOf(term);
-
-	if (index < 0) {
-		return false;
-	}
-
-	const before =
-		message[index - 1] ?? " ";
-
-	const after =
-		message[index + term.length] ?? " ";
-
-	return (
-		!/\p{L}|\p{N}/u.test(before) &&
-		!/\p{L}|\p{N}/u.test(after)
-	);
-}
-
 function mentionsKnownEntity(
 	message: string,
 	knowledge: string,
 ): boolean {
-	return extractPortfolioKnowledgeTerms(
-		knowledge,
-	).some((term) =>
-		containsTermAtBoundary(message, term),
-	);
+	return extractPortfolioKnowledgeTerms(knowledge).some((term) => {
+		const index = message.indexOf(term);
+
+		if (index < 0) return false;
+
+		const before = message[index - 1] ?? " ";
+		const after = message[index + term.length] ?? " ";
+
+		return (
+			!/[\p{L}\p{N}]/u.test(before) &&
+			!/[\p{L}\p{N}]/u.test(after)
+		);
+	});
 }
 
 /**
- * A Marvin mention must not be usable as a prefix that unlocks an unrelated task.
+ * Prevent one Marvin reference from unlocking an unrelated general task.
  *
  * Example:
- * "Marvin, write me a Python game."
+ * "Marvin, write me a Python snake game."
  */
-function hasIndependentGeneralTask(
-	message: string,
-): boolean {
+function hasIndependentGeneralTask(message: string): boolean {
 	return (
 		/\b(?:write|create|make|build|fix|debug|teach|solve|calculate|generate)\s+(?:(?:me|my|a|an|some|the|this|for me)\s+){0,3}(?:java|python|react|javascript|typescript|html|css|sql|code|script|component|app|website|calculator|game|essay|poem|story|email|equation|assignment|quiz)\b/.test(
 			message,
@@ -125,7 +116,7 @@ function hasIndependentGeneralTask(
 		/\b(?:what's|what is|tell me)\s+(?:the\s+)?(?:weather|capital of|score of|latest news)\b/.test(
 			message,
 		) ||
-		/\b(?:tell me a joke|give me relationship advice|explain (?:photosynthesis|quantum physics|world war)|who (?:is|was|invented))\b/.test(
+		/\b(?:tell me a joke|give me relationship advice|explain (?:photosynthesis|quantum physics|world war))\b/.test(
 			message,
 		)
 	);
@@ -135,35 +126,35 @@ function isDirectlyScoped(
 	message: string,
 	knowledge: string,
 ): boolean {
+	/*
+	 * Explicit unrelated tasks win even when Marvin is mentioned.
+	 */
 	if (hasIndependentGeneralTask(message)) {
 		return false;
 	}
 
 	/*
-	 * Explicit Marvin / Mj reference.
+	 * Any explicit question about Marvin / Mj belongs to portfolio scope.
 	 *
-	 * This intentionally permits unknown Marvin-related questions to reach
-	 * the model, where the factual-accuracy rules can answer "I don't have
-	 * that information" instead of incorrectly calling them unrelated.
+	 * Whether the requested fact is KNOWN is handled later by M's
+	 * approved knowledge and factual-accuracy rules.
 	 */
 	if (MARVIN_REFERENCE.test(message)) {
 		return true;
 	}
 
-	if (
-		mentionsKnownEntity(
-			message,
-			knowledge,
-		)
-	) {
+	/*
+	 * Exact known project, certification, or education entities.
+	 */
+	if (mentionsKnownEntity(message, knowledge)) {
 		return true;
 	}
 
 	/*
-	 * Natural phrases about the current portfolio.
+	 * Natural portfolio wording.
 	 */
 	if (
-		/\b(?:this|his|marvin's|marvins|mj's)\s+(?:portfolio|website|site|projects?|skills?|work|experience|background|education|certifications?|resume|career|professional direction|tech stack|strongest project|automation|github|linkedin|instagram|email)\b/.test(
+		/\b(?:this|his)\s+(?:portfolio|website|site|projects?|skills?|work|experience|background|education|certifications?|resume|career|professional direction|tech stack|strongest project|automation)\b/.test(
 			message,
 		)
 	) {
@@ -182,7 +173,7 @@ function isDirectlyScoped(
 	 * Questions specifically about M.
 	 */
 	if (
-		/\b(?:what is m|who is m|how (?:was|is|does) m|what model does m|why does m|m's (?:architecture|model|security|portfolio|scope))\b/.test(
+		/\b(?:who is m|what is m|how (?:was|is|does) m|what model does m|why does m|m's (?:architecture|model|security|portfolio|scope))\b/.test(
 			message,
 		)
 	) {
@@ -190,16 +181,17 @@ function isDirectlyScoped(
 	}
 
 	if (
-		/\b(?:this|the)\s+(?:portfolio\s+)?assistant\b/.test(
-			message,
-		)
+		/\b(?:this|the)\s+(?:portfolio\s+)?assistant\b/.test(message)
 	) {
 		return true;
 	}
 
 	/*
-	 * Pronouns naturally refer to Marvin inside a dedicated portfolio
-	 * assistant when paired with an approved public/professional topic.
+	 * Natural pronoun questions.
+	 *
+	 * "where is he studying?"
+	 * "what is his github?"
+	 * "does he know react?"
 	 */
 	if (
 		/\b(?:he|him|his)\b/.test(message) &&
@@ -209,41 +201,22 @@ function isDirectlyScoped(
 	}
 
 	/*
-	 * Common short requests inside a dedicated portfolio assistant.
+	 * Short profile queries:
 	 *
-	 * "github"
-	 * "email?"
-	 * "linkedin"
-	 * "portfolio link"
-	 *
-	 * These are much more likely to mean Marvin's public profile than a
-	 * request for general knowledge.
+	 * github
+	 * email?
+	 * linkedin
+	 * school
 	 */
 	if (SHORT_PROFILE_REQUEST.test(message)) {
 		return true;
 	}
 
-	if (
-		/\b(?:what|which)\s+project\s+should\s+(?:i|a recruiter|a client)\s+(?:inspect|look at|review|start with)\b/.test(
-			message,
-		)
-	) {
-		return true;
-	}
-
 	/*
-	 * Questions phrased around an implied Marvin profile.
+	 * Recruiter / client project-selection questions.
 	 */
 	if (
-		/\b(?:where|what)\s+(?:does|is)\s+(?:he|mj)\s+(?:study|studying|based|located|work)\b/.test(
-			message,
-		)
-	) {
-		return true;
-	}
-
-	if (
-		/\bwhat\s+(?:course|degree|program)\s+is\s+he\s+(?:taking|studying|in)\b/.test(
+		/\b(?:which|what)\s+project\s+should\s+(?:i|a recruiter|a client)\s+(?:inspect|look at|review|start with)\b/.test(
 			message,
 		)
 	) {
@@ -272,78 +245,56 @@ const CONTINUATION = [
 
 	/^(?:does|did|was|is|what|which|how)\b.{0,100}\b(?:it|that|this|he|him|his|the (?:project|first one|second one|other one|workflow|system|automation|frontend|backend|ai part|architecture))\b.{0,80}\??$/,
 
-	/^(?:email|e-mail|linkedin|instagram|github|github account|portfolio|portfolio link|website|resume|cv|school|college|course|degree|education|age|location|contact)\??$/,
+	/^(?:email|linkedin|linked in|instagram|github|github account|portfolio|portfolio link|website|resume|cv|school|college|university|course|degree|program|education|age|location|contact)\??$/,
 ];
 
-function isContinuation(
-	message: string,
-): boolean {
-	return CONTINUATION.some(
-		(pattern) => pattern.test(message),
-	);
+function isContinuation(message: string): boolean {
+	return CONTINUATION.some((pattern) => pattern.test(message));
 }
 
 function hasRecentPortfolioExchange(
 	history: readonly ChatMessage[],
 	knowledge: string,
 ): boolean {
-	const previous =
-		history[history.length - 1];
+	const previous = history[history.length - 1];
 
 	if (
 		previous?.role !== "assistant" ||
 		!previous.content.trim() ||
-		previous.content ===
-			OUT_OF_SCOPE_RESPONSE
+		previous.content === OUT_OF_SCOPE_RESPONSE
 	) {
 		return false;
 	}
 
 	/*
-	 * Walk the short client-provided history in sequence.
-	 *
-	 * A continuation is valid only when it chains from an actual
-	 * portfolio-scoped exchange.
+	 * Each continuation must remain chained to a legitimate
+	 * portfolio conversation.
 	 */
 	let scoped = false;
 
-	for (
-		let index = 0;
-		index < history.length - 1;
-		index++
-	) {
-		const current = history[index];
+	for (let i = 0; i < history.length - 1; i++) {
+		const current = history[i];
 
-		if (current.role !== "user") {
-			continue;
-		}
+		if (current.role !== "user") continue;
 
-		const next =
-			history[index + 1];
+		const next = history[i + 1];
 
 		if (
 			next?.role !== "assistant" ||
-			next.content ===
-				OUT_OF_SCOPE_RESPONSE
+			next.content === OUT_OF_SCOPE_RESPONSE
 		) {
 			scoped = false;
 			continue;
 		}
 
-		const text =
-			normalize(current.content);
+		const text = normalize(current.content);
 
 		scoped =
-			isDirectlyScoped(
-				text,
-				knowledge,
-			) ||
+			isDirectlyScoped(text, knowledge) ||
 			(
 				scoped &&
 				isContinuation(text) &&
-				!hasIndependentGeneralTask(
-					text,
-				)
+				!hasIndependentGeneralTask(text)
 			);
 	}
 
@@ -352,17 +303,13 @@ function hasRecentPortfolioExchange(
 
 export function isPortfolioFollowUp(
 	latestMessage: string,
-	conversationHistory:
-		readonly ChatMessage[],
+	conversationHistory: readonly ChatMessage[],
 	knowledge: string,
 ): boolean {
-	const message =
-		normalize(latestMessage);
+	const message = normalize(latestMessage);
 
 	return (
-		!hasIndependentGeneralTask(
-			message,
-		) &&
+		!hasIndependentGeneralTask(message) &&
 		isContinuation(message) &&
 		hasRecentPortfolioExchange(
 			conversationHistory,
@@ -373,18 +320,13 @@ export function isPortfolioFollowUp(
 
 export function isPortfolioScopedRequest(
 	latestMessage: string,
-	conversationHistory:
-		readonly ChatMessage[],
+	conversationHistory: readonly ChatMessage[],
 	knowledge: string,
 ): boolean {
-	const message =
-		normalize(latestMessage);
+	const message = normalize(latestMessage);
 
 	return (
-		isDirectlyScoped(
-			message,
-			knowledge,
-		) ||
+		isDirectlyScoped(message, knowledge) ||
 		isPortfolioFollowUp(
 			message,
 			conversationHistory,
