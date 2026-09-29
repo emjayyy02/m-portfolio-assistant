@@ -8,6 +8,11 @@ Summary: I build workflow automations and web interfaces that turn repetitive pr
 
 ## Projects
 
+### RetailRAG
+Type: RAG decision-support system
+Summary: A production-style RAG system with grounded retrieval, security controls, automated evaluation, citation validation, and operational observability.
+Technologies: n8n, Supabase, RAG, Gemini API, Groq API
+
 ### Revenue Recovery OS
 Type: Customer recovery operations system
 Summary: Connects customer signals to explainable risk, human-approved recovery actions, and confirmed outcomes in a secured read-only demo.
@@ -67,6 +72,7 @@ Technologies: React, TypeScript, Vite, Tailwind CSS, Motion
 - Zapier: App-to-app workflows
 
 ### AI / LLM Workflows
+- RAG: Grounded retrieval with vector search and citation validation
 - AI Agents: Agent-based AI workflows and automation
 - OpenAI: AI models and API integrations
 - Gemini API: Google AI model integrations
