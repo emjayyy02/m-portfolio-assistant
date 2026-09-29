@@ -85,7 +85,6 @@ Technologies: React, TypeScript, Vite, Tailwind CSS, Motion
 - Webhooks: Event-driven integrations
 - REST APIs: Service integration
 - JSON: Structured data exchange
-- Local Storage: Browser-side persistence
 
 ### CRM & Operations
 - HubSpot: CRM, deals and sales automation
