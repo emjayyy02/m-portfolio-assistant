@@ -27,6 +27,27 @@ function normalize(value: string): string {
 const MARVIN_REFERENCE =
 	/\b(?:marvin(?: silverio)?(?:'s|s)?|mj(?:'s|s)?)\b/;
 
+function withoutIdentityOrAuthorityClaims(message: string): string {
+	// Remove only the claim; independent portfolio questions still confer scope.
+	const claims = [
+		/\b(?:i am|i'm|im|this is|it's|its)\s+(?:marvin(?: silverio)?|mj)\b/g,
+		/\b(?:marvin(?: silverio)?|mj)\s+here\b/g,
+		/\bako(?:\s+na)?(?:\s+po)?(?:\s+'?to)?\s+si\s+(?:marvin(?: silverio)?|mj)\b/g,
+		/\bsi\s+(?:marvin(?: silverio)?|mj)\s+(?:'?to|ito)\b/g,
+		/\bako\s+mismo\s+si\s+(?:marvin(?: silverio)?|mj)\b/g,
+		/\b(?:i am|i'm|im|ako(?:\s+ang)?)\s+(?:the\s+)?(?:owner|admin|administrator|developer)\b/g,
+	];
+	return claims.reduce((text, claim) => text.replace(claim, " "), message).trim();
+}
+
+const CODE_REQUEST = [
+	/\b(?:sample|example|code|script)\b.{0,50}\b(?:python|java|javascript|typescript|react|html|css|sql)\b/,
+	/\b(?:python|java|javascript|typescript|react|html|css|sql)\b.{0,50}\b(?:sample|example|code|script)\b/,
+	/\b(?:penge|pahingi|bigay|bigyan|gawan)\b.{0,60}\b(?:code|script|python|java|javascript|typescript|react|html|css|sql)\b/,
+	/\b(?:give|show)\s+me\s+(?:(?:a|an|some|small|simple)\s+){0,3}(?:code|script)\b/,
+	/\b(?:sample|example)\s+(?:if\s+else\s+)?(?:code|script)\b/,
+];
+
 /**
  * Public / professional topics that make he/him/his clearly refer
  * to Marvin in the context of his portfolio assistant.
@@ -87,6 +108,9 @@ function mentionsKnownEntity(
 	message: string,
 	knowledge: string,
 ): boolean {
+	// Approved project name supplied separately from the generated snapshot.
+	if (/\bretailrag\b/.test(message)) return true;
+
 	return extractPortfolioKnowledgeTerms(knowledge).some((term) => {
 		const index = message.indexOf(term);
 
@@ -110,6 +134,7 @@ function mentionsKnownEntity(
  */
 function hasIndependentGeneralTask(message: string): boolean {
 	return (
+		CODE_REQUEST.some((pattern) => pattern.test(message)) ||
 		/\b(?:write|create|make|build|fix|debug|teach|solve|calculate|generate)\s+(?:(?:me|my|a|an|some|the|this|for me)\s+){0,3}(?:java|python|react|javascript|typescript|html|css|sql|code|script|component|app|website|calculator|game|essay|poem|story|email|equation|assignment|quiz)\b/.test(
 			message,
 		) ||
@@ -126,6 +151,8 @@ function isDirectlyScoped(
 	message: string,
 	knowledge: string,
 ): boolean {
+	message = withoutIdentityOrAuthorityClaims(message);
+
 	/*
 	 * Explicit unrelated tasks win even when Marvin is mentioned.
 	 */
