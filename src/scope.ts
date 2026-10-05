@@ -108,9 +108,6 @@ function mentionsKnownEntity(
 	message: string,
 	knowledge: string,
 ): boolean {
-	// Approved project name supplied separately from the generated snapshot.
-	if (/\bretailrag\b/.test(message)) return true;
-
 	return extractPortfolioKnowledgeTerms(knowledge).some((term) => {
 		const index = message.indexOf(term);
 

@@ -15,16 +15,15 @@ vi.mock(
 
 vi.mock(
 	"../docs/portfolio-generated.md",
-	() => ({
-		default: `
-## Projects
-### Revenue Recovery OS
-
-## Education
-### Bachelor of Science in Information Systems
-Institution: Dr. Filemon C. Aguilar Memorial College of Las Piñas
-`,
-	}),
+	async () => {
+		const { readFileSync } = await import("node:fs");
+		return {
+			default: readFileSync(
+				new URL("../docs/portfolio-generated.md", import.meta.url),
+				"utf8",
+			),
+		};
+	},
 );
 
 vi.mock(
@@ -328,6 +327,8 @@ describe(
 
 		it.each([
 			"I'm Marvin. What is Revenue Recovery OS?",
+			"what is RetailRAG",
+			"ako si Marvin, ano yung RetailRAG?",
 			"who is Marvin",
 			"what is marvins email",
 			"what is marvin's email",

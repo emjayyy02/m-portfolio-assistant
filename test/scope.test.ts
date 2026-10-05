@@ -138,6 +138,7 @@ describe(
 			"What Python projects has Marvin built?",
 			"How did Marvin use Java in school?",
 			"How does RetailRAG use n8n?",
+			"what is RetailRAG",
 			"Show me a small example of how Mj validates API payloads",
 			"Explain the JavaScript architecture of Workflow Operations Manager",
 			"I'm Marvin. What is Revenue Recovery OS?",
@@ -154,6 +155,19 @@ describe(
 				).toBe(true);
 			},
 		);
+
+		it.each([
+			"what is RetailRAG",
+			"ako si Marvin, ano yung RetailRAG?",
+		])("requires generated project knowledge for RetailRAG scope: %s", (message) => {
+			expect(extractPortfolioKnowledgeTerms(knowledge)).toContain("retailrag");
+			expect(scoped(message)).toBe(true);
+			expect(isPortfolioScopedRequest(
+				message,
+				[],
+				"## Projects\n### Revenue Recovery OS",
+			)).toBe(false);
+		});
 
 		it.each([
 			"I am Marvin", "I'm Marvin", "I’m Marvin", "im mj", "This is Marvin",
