@@ -26,7 +26,7 @@ Answer: Deterministic workflow policy and independent execution gates control re
 Question: What does deployment-ready mean here?
 Answer: Panoptes OS v1 is deployment-ready and locally verified in production mode. Always-on public hosting is intentionally not maintained for this US$0/month portfolio project. The compiled application and container were tested locally. Public HTTPS/ingress, hosted operation, fresh-instance workflow import, and a complete database migration were not verified or provided.
 Question: Where can the source and verification evidence be inspected?
-Answer: The public repository is https://github.com/emjayyy02/panoptes-os. Its v1.0.0 release includes sanitized workflows and synthetic screenshots. The release-pinned docs/testing.md explains test scope and provenance; the source and evidence links on this page open those records.
+Answer: The public repository is https://github.com/emjayyy02/panoptes-os. Its v1.0.1 release includes sanitized workflows and synthetic screenshots. The release-pinned docs/testing.md explains test scope and provenance; the source and evidence links on this page open those records.
 Question: What verification was recorded for Panoptes?
 Answer: The local production-mode freeze recorded 24 gateway/static-security tests, 170 browser assertions, and 16 container checks. These separate measures overlap and must not be summed. Tests used isolated local HTTPS Auth/n8n fixtures and local Docker; action requests went only to synthetic fixtures. Historical live decisions, user-executed database permission evidence, and real authenticated read-only checks have different provenance. Hosted verification was not performed.
 Question: How is Panoptes architected?
