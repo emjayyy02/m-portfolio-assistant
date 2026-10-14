@@ -575,3 +575,30 @@ describe(
 		);
 	},
 );
+
+
+describe("Panoptes generated project scope", () => {
+	it.each([
+		"What is Panoptes OS?",
+		"Why did Marvin build Panoptes OS?",
+		"How does Panoptes OS recovery work?",
+		"What can AI authorize in Panoptes OS?",
+		"How does Panoptes OS human approval work?",
+		"Was Panoptes OS publicly deployed?",
+		"Where is the Panoptes OS source code?",
+		"I'm Marvin. What is Panoptes OS?",
+		"ako si Marvin, ano yung Panoptes OS?",
+	])("allows catalog-backed project questions: %s", (message) => {
+		expect(scoped(message)).toBe(true);
+	});
+	it("requires generated Panoptes identity instead of a hardcoded scope exception", () => {
+		expect(extractPortfolioKnowledgeTerms(knowledge)).toContain("panoptes os");
+		expect(isPortfolioScopedRequest("what is Panoptes OS", [], "## Projects\n### Revenue Recovery OS")).toBe(false);
+	});
+	it("retains scope for a technical project follow-up", () => {
+		expect(scoped("How does it work?", [
+			{ role: "user", content: "What is Panoptes OS?" },
+			{ role: "assistant", content: "Panoptes OS is Marvin's incident recovery project." },
+		])).toBe(true);
+	});
+});

@@ -506,3 +506,45 @@ describe(
 		);
 	},
 );
+
+
+describe("Panoptes approved knowledge delivery", () => {
+	it.each([
+		"What is Panoptes OS?",
+		"How does Panoptes OS control AI and recovery?",
+		"Was Panoptes OS deployed, and where is the evidence?",
+		"I'm Marvin. What is Panoptes OS?",
+	])("passes complete catalog facts to the mocked model: %s", async (message) => {
+		const { env, run } = makeEnv();
+		run.mockResolvedValue(safeModelResponse("Approved portfolio answer"));
+		const response = await send([{ role: "user", content: message }], env);
+		expect(response.status).toBe(200);
+		expect(await response.text()).toContain("Approved portfolio answer");
+		expect(run).toHaveBeenCalledTimes(1);
+		const input = run.mock.calls[0][1] as { messages: { role: string; content: string }[] };
+		const system = input.messages.filter((entry) => entry.role === "system").map((entry) => entry.content).join("\n");
+		for (const fact of [
+			"### Panoptes OS",
+			"https://github.com/emjayyy02/panoptes-os",
+			"Always-on public hosting is intentionally not maintained",
+			"Approval cannot bypass UNSAFE classification or an exhausted retry budget",
+			"approval POSTs are never automatically retried",
+			"Node.js, Fastify",
+			"RECOVERY_PENDING",
+			"Featured: Yes",
+		]) expect(system).toContain(fact);
+	});
+	it("keeps recorded verification scope and removes stale featured claims", async () => {
+		const { readFileSync } = await import("node:fs");
+		const generated = readFileSync(new URL("../docs/portfolio-generated.md", import.meta.url), "utf8");
+		const deep = readFileSync(new URL("../docs/portfolio-deep-context.md", import.meta.url), "utf8");
+		const panoptes = generated.split("### Panoptes OS")[1].split("### ")[0];
+		expect(panoptes).toContain("24 gateway/static-security tests");
+		expect(panoptes).toContain("170 browser assertions");
+		expect(panoptes).toContain("16 container checks");
+		expect(panoptes).toContain("synthetic");
+		expect(panoptes).toContain("hosted");
+		expect(deep).not.toContain("Revenue Recovery OS is the current Featured Build");
+		expect(deep).not.toContain("Revenue Recovery OS is his strongest systems project");
+	});
+});

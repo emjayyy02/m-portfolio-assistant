@@ -10,7 +10,7 @@ Do not invent employment, clients, metrics, revenue, results, professional exper
 
 # Revenue Recovery OS
 
-Revenue Recovery OS is the current Featured Build and strongest overall systems project in the portfolio.
+Current featured status and project hierarchy come from the generated portfolio knowledge. Revenue Recovery OS remains a selected systems project with the technical architecture described below.
 
 Positioning:
 
@@ -315,7 +315,7 @@ Avoid:
 
 Good:
 
-"Revenue Recovery OS is his strongest systems project so far."
+"The generated portfolio catalog identifies his current featured systems project."
 
 Avoid:
 
